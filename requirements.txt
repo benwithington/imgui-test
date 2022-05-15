@@ -1,4 +1,6 @@
 glfw==2.5.3
 imgui==1.4.1
+numpy==1.22.3
+Pillow==9.1.0
 PyOpenGL==3.1.6
 PyOpenGL-accelerate==3.1.6

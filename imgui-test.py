@@ -2,10 +2,30 @@ import glfw
 from OpenGL.GL import *
 import imgui
 from imgui.integrations.glfw import GlfwRenderer
+import numpy as np
+from PIL import Image
+import sys
+
+from ShaderProgram import *
 
 width  = 1280
 height = 720
 title  = "pyimgui test"
+
+vertices = np.array(
+      #positions       #colors         #texture coords
+    [ 0.5,  0.5, 0.0,  1.0, 0.0, 0.0,  1.0, 1.0,   #top right
+      0.5, -0.5, 0.0,  0.0, 1.0, 0.0,  1.0, 0.0,   #bottom right
+     -0.5, -0.5, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,   #bottom left
+     -0.5,  0.5, 0.0,  1.0, 1.0, 0.0,  0.0, 1.0],  #top left
+    dtype=np.float32
+)
+
+indices = np.array(
+    [0, 1, 3,
+     1, 2, 3],
+     dtype=np.uint32
+)
 
 def main():
     if not glfw.init():
@@ -20,6 +40,54 @@ def main():
 
     glfw.make_context_current(window)
     glfw.set_framebuffer_size_callback(window, framebufferSizeCallback)
+
+    #Create VAO and VBO
+    vao = glGenVertexArrays(1)
+    glBindVertexArray(vao)
+
+    vbo = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+
+    ebo = glGenBuffers(1)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL_STATIC_DRAW)
+
+    sizeInBytes = vertices.dtype.itemsize
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeInBytes, ctypes.c_void_p(0 * sizeInBytes))
+    glEnableVertexAttribArray(0)
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeInBytes, ctypes.c_void_p(3 * sizeInBytes))
+    glEnableVertexAttribArray(1)
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeInBytes, ctypes.c_void_p(6 * sizeInBytes))
+    glEnableVertexAttribArray(2)
+    glBindVertexArray(0)
+
+    #Texture Stuff
+    wallTex = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, wallTex)
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+    with Image.open("./resources/textures/wall.jpg") as image:
+        img_width, img_height = image.size
+        img_data = np.array(list(image.getdata()))
+    
+    #print(f"Width: {img_width}, Height: {img_height}\nData: {img_data}")
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img_width, img_height, 0, GL_RGB, GL_UNSIGNED_BYTE, img_data)
+    glGenerateMipmap(GL_TEXTURE_2D)
+
+    del img_data
+
+    #Create Shaders & Shader program
+    vs = Shader("./shaders/default.vert", GL_VERTEX_SHADER)
+    fs = Shader("./shaders/default.frag", GL_FRAGMENT_SHADER)
+    program = Program(vs, fs)
+    program.use()
 
     #imgui setup
     imgui.create_context()
@@ -38,6 +106,12 @@ def main():
         #Render Stuff
         glClearColor(0.1, 0.1, 0.1, 1.0)
         glClear(GL_COLOR_BUFFER_BIT)
+
+        program.use()
+        glBindTexture(GL_TEXTURE_2D, wallTex)
+        glBindVertexArray(vao)
+        glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, ctypes.c_void_p(0))
+        glBindVertexArray(0)
 
         #Create imgui window
         #imgui.show_demo_window()
@@ -69,7 +143,7 @@ def framebufferSizeCallback(glfw_window: glfw._GLFWwindow, width: int, height: i
 def gui(glfw_window: glfw._GLFWwindow):
     if imgui.begin_main_menu_bar():
         if imgui.begin_menu("File"):
-            clicked, selected = imgui.menu_item("Quit", "Ctrl+Q")
+            clicked, selected = imgui.menu_item("Quit", "Esccd ")
             if clicked:
                 glfw.set_window_should_close(glfw_window, True)
             imgui.end_menu()
@@ -79,6 +153,12 @@ def gui(glfw_window: glfw._GLFWwindow):
     imgui.text("Hello from a window")
     imgui.end()
                 
+
+def show_pil_image():
+    with Image.open("./resources/textures/wall.jpg") as image:
+        width, height = image.size
+
+    print(f"Width: {width}, Height: {height}")
 
 if __name__ == "__main__":
     main()
