@@ -152,13 +152,6 @@ def gui(glfw_window: glfw._GLFWwindow):
     imgui.begin("A Window")
     imgui.text("Hello from a window")
     imgui.end()
-                
-
-def show_pil_image():
-    with Image.open("./resources/textures/wall.jpg") as image:
-        width, height = image.size
-
-    print(f"Width: {width}, Height: {height}")
 
 if __name__ == "__main__":
     main()
